@@ -12,7 +12,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from requests.exceptions import RequestException
 
 class WebCrawler:
-    def __init__(self, base_url, output_file="errors_4xx.csv"):
+    def __init__(self, base_url, output_file="errors_4xx.csv", max_urls=None):
         self.base_url = base_url
         self.domain = urlparse(base_url).netloc
         self.visited_urls = set()
@@ -20,6 +20,7 @@ class WebCrawler:
         self.errors_4xx = []
         self.output_file = output_file
         self.referrer_map = {}  # Mapeja URL -> referrer
+        self.max_urls = max_urls  # Límit màxim d'URLs
         
         # Configuració del navegador
         chrome_options = Options()
@@ -118,6 +119,11 @@ class WebCrawler:
             self.referrer_map[self.base_url] = "Pàgina inicial"
             
             while self.queue:
+                # Comprovem si hem arribat al límit d'URLs
+                if self.max_urls is not None and processed_count >= self.max_urls:
+                    print(f"S'ha arribat al límit d'URLs ({self.max_urls}). Aturant el crawling.")
+                    break
+                
                 current_url = self.queue.pop(0)
                 if current_url in self.visited_urls:
                     continue
@@ -213,11 +219,15 @@ def main():
     parser = argparse.ArgumentParser(description="Crawler per detectar errors 4XX en un domini")
     parser.add_argument("url", help="URL base per iniciar el crawling")
     parser.add_argument("-o", "--output", default="errors_4xx.csv", help="Fitxer de sortida (CSV)")
-    parser.add_argument("-d", "--depth", type=int, default=None, help="Profunditat màxima d'exploració (opcional)")
+    parser.add_argument("-l", "--limit", type=int, default=None, help="Límit màxim d'URLs a processar")
     args = parser.parse_args()
     
-    crawler = WebCrawler(args.url, args.output)
+    crawler = WebCrawler(args.url, args.output, args.limit)
     print(f"Iniciant crawling de {args.url}")
+    
+    if args.limit:
+        print(f"Límit d'URLs establert a: {args.limit}")
+        
     crawler.crawl()
 
 if __name__ == "__main__":
